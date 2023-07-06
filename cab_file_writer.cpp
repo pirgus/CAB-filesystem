@@ -122,7 +122,6 @@ private:
     }
 
     void defaultUsableToZero(){
-
         size_t reserved_blocks = 1 + b_record.bitmap_size_in_blocks;
         for(size_t i = reserved_blocks; i < b_record.total_blocks; i++){
             this->setBit(i,0);
@@ -141,6 +140,27 @@ private:
     }
 
 };
+
+void writeToCAB(std::ifstream& readable_file, std::ofstream& writable_file, boot_record& b_record, std::string file_name){
+    std::ifstream file_to_write(file_name, std::ios::binary | std::ios::ate);
+
+    // obtaining file's size in order to calculate how many blocks it needs
+    unsigned int file_size = file_to_write.tellg();
+    unsigned int blocks_for_file = ceil((file_size / (b_record.sectors_per_block * b_record.bytes_per_sector)));
+    unsigned int initial_block = b_record.sectors_per_block * b_record.bytes_per_sector;
+    unsigned int size_of_bitmap = b_record.bitmap_size_in_blocks * b_record.sectors_per_block * b_record.bytes_per_sector;
+    unsigned int needed_blocks = blocks_for_file; // will be used as an auxiliar to control "for"
+    char buffer = ' ';
+    std::vector<unsigned int> blocks_used;
+
+    // we need to process our bitmap to check if the  blocks needed are contiguously available 
+    for(int i = 0; i < size_of_bitmap; i++){
+        readable_file.seekg(initial_block);
+        if(readable_file.read(&buffer, 1) && buffer != 0xFF){
+            // me perdi aqui, nao to conseguindo pensar
+        }
+    }
+}
 
 
 int main(int argc, const char** argv){
