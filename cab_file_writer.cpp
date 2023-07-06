@@ -142,91 +142,10 @@ private:
 
 };
 
-unsigned int getDiskSize (std::ifstream& readable_file){
-
-    readable_file.seekg(0, std::ios::end);
-    auto disk_size = readable_file.tellg();
-    return disk_size;
-
-}
-
-
-boot_record writeBootRecord(std::ifstream& readable_file, std::ofstream& writable_file){
-    boot_record b_record;
-
-    auto disk_size = getDiskSize(readable_file);
-
-    b_record.sectors_per_block = SECTORS_PER_BLOCK;
-    b_record.bytes_per_sector = BYTES_PER_SECTOR;
-    b_record.total_blocks = disk_size / (b_record.bytes_per_sector * b_record.sectors_per_block);
-    b_record.bitmap_size_in_blocks = ceil((b_record.total_blocks / 8) / (b_record.bytes_per_sector * b_record.sectors_per_block));
-    b_record.n_root_entries = N_ROOT_ENTRIES;
-
-    writable_file.write((const char*)&b_record, 512);
-    
-    return b_record;
-}
-
-void writeBitMap(std::ifstream& readable_file, std::ofstream& writable_file, const boot_record& b_record){
-    BitMap* bit_map = new BitMap(b_record);
-    bit_map->format();
-    std::vector<unsigned char> bit_map_vector = bit_map->getBuffer();
-    writable_file.seekp(b_record.sectors_per_block * b_record.bytes_per_sector);
-    writable_file.write((const char*)&*bit_map_vector.begin(), (b_record.bitmap_size_in_blocks * b_record.sectors_per_block * b_record.bytes_per_sector));
-
-    delete bit_map;
-}
-
-void writeRootDir(std::ifstream& readable_file, std::ofstream& writable_file, const boot_record& b_record){
-            // written in portuguese just out of a habit
-
-    //. and .. directories   
-    dir_entry ponto, pontoponto;
-    ponto.first_block = (1 + b_record.bitmap_size_in_blocks);
-    ponto.file_size_in_bytes = 0;
-    ponto.file_type = DIRECTORY_TYPE;
-    strcpy(ponto.file_name, "ponto");
-
-    pontoponto.first_block = (1 + b_record.bitmap_size_in_blocks);
-    pontoponto.file_size_in_bytes = 0;
-    pontoponto.file_type = DIRECTORY_TYPE;
-    strcpy(pontoponto.file_name, "pontoponto");
-    
-
-    //setting the corresponding bits in the bitmap
-    BitMap aux_bitmap(readable_file); 
-    //std::cout << "chegou aqui1\n";
-    //std::cout << "first bit = " << 1 + b_record.bitmap_size_in_blocks << std::endl;
-    //std::cout << "last bit = " << DIR_SIZE_IN_BLOCKS << std::endl;
-    aux_bitmap.writeBits(1 + b_record.bitmap_size_in_blocks, DIR_SIZE_IN_BLOCKS, 1);
-    //std::cout << "chegou aqui2\n";
-    //writing...
-    writable_file.seekp((1 + b_record.bitmap_size_in_blocks) * b_record.sectors_per_block * b_record.bytes_per_sector);
-    writable_file.write((const char*)&ponto, ENTRY_SIZE);
-    writable_file.write((const char*)&pontoponto, ENTRY_SIZE);
-
-    writable_file.seekp(b_record.bytes_per_sector * b_record.sectors_per_block);
-    writable_file.write((const char*)&*aux_bitmap.getBuffer().begin(), b_record.bitmap_size_in_blocks * b_record.sectors_per_block * b_record.bytes_per_sector);
-}
 
 int main(int argc, const char** argv){
 
-    const std::string image_name(argv[1]);
-
-    std::cout << "Initializing formatting process\n...\n"; 
-
-    std::ifstream readable_file;
-    std::ofstream writable_file;
-    writable_file.open(image_name, std::ios::in | std::ios::out);
-    readable_file.open(image_name, std::ios::binary | std::ios::ate);
     
-    boot_record b_record = writeBootRecord(readable_file, writable_file);
-    writeBitMap(readable_file, writable_file, b_record);
-    writeRootDir(readable_file, writable_file, b_record);
 
-    readable_file.close();
-    writable_file.close();
-
-    std::cout << "Done :D\n";
     return 0;
 }
