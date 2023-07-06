@@ -9,6 +9,9 @@
 const unsigned int SECTORS_PER_BLOCK = 1;
 const unsigned int BYTES_PER_SECTOR = 512;
 const unsigned int N_ROOT_ENTRIES = 1024;
+const unsigned char DIRECTORY_TYPE = 1;
+const unsigned char BINARY_TYPE = 0;
+const unsigned int ENTRY_SIZE = 32;
 
 typedef struct boot_record{
     unsigned int sectors_per_block;
@@ -19,6 +22,13 @@ typedef struct boot_record{
 
     unsigned char padding[492];
 }__attribute__((packed)) boot_record;
+
+typedef struct dir_entry{
+    unsigned int first_block;
+    unsigned int file_size_in_bytes;
+    unsigned char file_type;
+    char file_name[23];
+}__attribute__((packed)) dir_entry;
 
 class BitMap{
 public: 
@@ -124,8 +134,28 @@ void writeBitMap(std::ifstream& readable_file, std::ofstream& writable_file, con
     BitMap* bit_map = new BitMap(b_record);
     bit_map->format();
     std::vector<unsigned char> bit_map_vector = bit_map->getBuffer();
+    writable_file.seekp(b_record.sectors_per_block * b_record.bytes_per_sector);
+    writable_file.write((const char*)&*bit_map_vector.begin(), (b_record.bitmap_size_in_blocks * b_record.sectors_per_block * b_record.bytes_per_sector));
+
     delete bit_map;
-    
+}
+
+void writeRootDir(std::ifstream& readable_file, std::ofstream& writable_file, const boot_record& b_record){
+            // written in portuguese just out of a habit
+    dir_entry ponto, pontoponto;
+    ponto.first_block = (1 + b_record.bitmap_size_in_blocks);
+    ponto.file_size_in_bytes = 0;
+    ponto.file_type = DIRECTORY_TYPE;
+    strcpy(ponto.file_name, "ponto");
+
+    pontoponto.first_block = (1 + b_record.bitmap_size_in_blocks);
+    pontoponto.file_size_in_bytes = 0;
+    pontoponto.file_type = DIRECTORY_TYPE;
+    strcpy(pontoponto.file_name, "pontoponto");
+
+    writable_file.seekp((1 + b_record.bitmap_size_in_blocks) * b_record.sectors_per_block * b_record.bytes_per_sector);
+    writable_file.write((const char*)&ponto, ENTRY_SIZE);
+    writable_file.write((const char*)&pontoponto, ENTRY_SIZE);
 }
 
 int main(int argc, const char** argv){
@@ -141,6 +171,7 @@ int main(int argc, const char** argv){
     
     boot_record b_record = writeBootRecord(readable_file, writable_file);
     writeBitMap(readable_file, writable_file, b_record);
+    writeRootDir(readable_file, writable_file, b_record);
 
     readable_file.close();
     writable_file.close();
