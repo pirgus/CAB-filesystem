@@ -147,7 +147,6 @@ unsigned int getDiskSize (std::ifstream& readable_file){
     readable_file.seekg(0, std::ios::end);
     auto disk_size = readable_file.tellg();
     return disk_size;
-
 }
 
 
@@ -202,11 +201,22 @@ void writeRootDir(std::ifstream& readable_file, std::ofstream& writable_file, co
     //std::cout << "chegou aqui2\n";
     //writing...
     writable_file.seekp((1 + b_record.bitmap_size_in_blocks) * b_record.sectors_per_block * b_record.bytes_per_sector);
+
+    // making everything == 0 just like my energy rn
+    char* zero_vector_block = (char*)calloc(b_record.sectors_per_block * b_record.bytes_per_sector, sizeof(char));
+    for(size_t i = 0; i < b_record.total_blocks - (1 + b_record.bitmap_size_in_blocks); i++){
+        writable_file.write(zero_vector_block, b_record.sectors_per_block * b_record.bytes_per_sector);
+    }
+    
+    writable_file.write(0, getDiskSize(readable_file) - ((1 + b_record.bitmap_size_in_blocks) * b_record.sectors_per_block * b_record.bytes_per_sector));
+    writable_file.seekp((1 + b_record.bitmap_size_in_blocks) * b_record.sectors_per_block * b_record.bytes_per_sector);
     writable_file.write((const char*)&ponto, ENTRY_SIZE);
     writable_file.write((const char*)&pontoponto, ENTRY_SIZE);
 
     writable_file.seekp(b_record.bytes_per_sector * b_record.sectors_per_block);
     writable_file.write((const char*)&*aux_bitmap.getBuffer().begin(), b_record.bitmap_size_in_blocks * b_record.sectors_per_block * b_record.bytes_per_sector);
+
+    
 }
 
 int main(int argc, const char** argv){
