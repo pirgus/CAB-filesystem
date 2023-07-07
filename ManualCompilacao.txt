@@ -1,0 +1,8 @@
+CAB File System
+
+Manual de compilação:
+
+1 - Compilar os arquivos de formatação e escrita de arquivos:
+    g++ cab_format.cpp -o cab_format.x
+    g++ cab_file_writer.cpp -o cab_file_writer.x
+    g++ cab_file_taker.cpp -o cab_file_taker.x

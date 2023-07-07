@@ -277,10 +277,10 @@ int main(int argc, const char **argv)
     std::string file_name_image = argv[1];
     std::ifstream readable_file(file_name_image, std::ios::binary | std::ios::ate);
     std::ofstream writable_file(file_name_image, std::ios::in | std::ios::out);
-    BitMap bmap(readable_file);
     boot_record b_record;
     std::string file_name_to_write = argv[2];
 
+    //it must be either 0 for generic binary files or 1 to directorie files
     b_record = readBootRecord(readable_file);
 
     writeToCAB(readable_file, writable_file, b_record, file_name_to_write);

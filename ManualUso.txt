@@ -1,0 +1,13 @@
+CAB File System
+
+Manual de utilização:
+
+1 - Formatar uma imagem com o formatador CAB:
+    ./cab_format.x nome_da_imagem.img
+
+2 - Inserir arquivos:
+    ./cab_file_writer.x nome_da_imagem.img nome_do_arquivo.tantofaz
+
+3 - Escrever em seu disco um arquivo do CAB File System:
+    ./cab_file_taker.x nome_da_imagem.img nome_do_arquivo
+    será escrito no diretório atual

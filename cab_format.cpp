@@ -184,7 +184,8 @@ void writeRootDir(std::ifstream& readable_file, std::ofstream& writable_file, co
     ponto.first_block = (1 + b_record.bitmap_size_in_blocks);
     ponto.file_size_in_bytes = 0;
     ponto.file_type = DIRECTORY_TYPE;
-    strcpy(ponto.file_name, "ponto");
+    std::string ponto_str("ponto");
+    strcpy(ponto.file_name, (const char*)(&*ponto_str.begin()));
 
     pontoponto.first_block = (1 + b_record.bitmap_size_in_blocks);
     pontoponto.file_size_in_bytes = 0;
