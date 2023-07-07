@@ -197,6 +197,14 @@ unsigned int getDiskSize(std::ifstream &readable_file)
     return disk_size;
 }
 
+dir_entry* loadRootDir(std::ifstream& readable_file, boot_record b_record){
+
+    dir_entry* current_dir = (dir_entry*)malloc(N_ROOT_ENTRIES * sizeof(dir_entry));
+    readable_file.seekg((1 + b_record.bitmap_size_in_blocks) * b_record.bytes_per_sector * b_record.sectors_per_block);
+    readable_file.read((char*)current_dir, N_ROOT_ENTRIES);
+    return current_dir;
+}
+
 void writeToCAB(std::ifstream &readable_file, std::ofstream &writable_file, boot_record &b_record, std::string file_name)
 {
     std::ifstream file_to_write(file_name, std::ios::binary | std::ios::ate);
@@ -204,10 +212,17 @@ void writeToCAB(std::ifstream &readable_file, std::ofstream &writable_file, boot
     char buf = ' ';
     // obtaining file's size in order to calculate how many blocks it needs
     unsigned int file_size = getDiskSize(file_to_write);
-    unsigned int blocks_for_file = ceil((file_size / (b_record.sectors_per_block * b_record.bytes_per_sector)));
+    std::cout << "file size == " << file_size << std::endl;
+
+    unsigned int blocks_for_file = ceil(((double)file_size / (b_record.sectors_per_block * b_record.bytes_per_sector)));
     size_t first_block = bmap.getFirstBlock(blocks_for_file);
+    std::cout << "blocks_for_file == " << blocks_for_file << std::endl;
+    std::cout << "first block == " << first_block << std::endl;
+
+    //if there is a big enough contiguous block
     if(first_block){
-        // first write file's entry in the directory required
+
+        // first write file's binary entry in the directory required
         dir_entry file_entry;
         file_entry.first_block = first_block;
         file_entry.file_size_in_bytes = file_size;
@@ -215,31 +230,63 @@ void writeToCAB(std::ifstream &readable_file, std::ofstream &writable_file, boot
         strcpy(file_entry.file_name, &*file_name.begin());
 
         // getting all the dir entries in an array
-        char* current_dir = (char*)malloc(N_ROOT_ENTRIES * ENTRY_SIZE * sizeof(char));
-        readable_file.seekg((1 + b_record.bitmap_size_in_blocks) * b_record.bytes_per_sector * b_record.sectors_per_block);
-        readable_file.read(current_dir, N_ROOT_ENTRIES * ENTRY_SIZE);
-        //for(int i = 0; i < )
+        dir_entry* current_dir = loadRootDir(readable_file, b_record);
+        
+        //finding an empty root dir entry
+        size_t available_entry_index;
+        for(size_t i = 0; i < b_record.n_root_entries; i++){
+            if(current_dir[i].file_type == 0xff || current_dir[i].first_block == 0x0){
+                available_entry_index = i;
+                break;
+            }
+        }
+        std::cout << "available_entry_index = " << available_entry_index << std::endl;
+
+        //writing dir_entry in disk
+        writable_file.seekp(0);
+        writable_file.seekp((ENTRY_SIZE * available_entry_index) + (1 + b_record.bitmap_size_in_blocks) * b_record.bytes_per_sector * b_record.sectors_per_block);
+        writable_file.write((const char*)&file_entry, ENTRY_SIZE);
+
+        //write file
+        
+        writable_file.seekp(file_entry.first_block * b_record.sectors_per_block * b_record.bytes_per_sector);
+        //for now, it is loading the entire file on memory instead of buffering to write on the filesystem
+        file_to_write.seekg(0);
+        std::string file_buffer_string((std::istreambuf_iterator<char>(file_to_write)), std::istreambuf_iterator<char>());
+        std::cout << "file buffer = \n" << file_buffer_string.c_str() << std::endl;
+        writable_file.write((const char*)&*file_buffer_string.begin(), file_size);
+
+        bmap.writeBits(first_block, blocks_for_file, 1);
+
+        writable_file.seekp(b_record.bytes_per_sector * b_record.sectors_per_block);
+        writable_file.write((const char*)&*(bmap.getBuffer().begin()), b_record.bitmap_size_in_blocks * b_record.sectors_per_block * b_record.bytes_per_sector);
         free((void*)current_dir);
-
     }
+}
 
+boot_record readBootRecord(std::ifstream &readable_file){
+    boot_record b_record;
+    readable_file.seekg(0);
+    readable_file.read((char*)&b_record, sizeof(boot_record));
 
-
+    return b_record;
 }
 
 int main(int argc, const char **argv)
 {
     std::string file_name_image = argv[1];
-    std::ifstream image_file(file_name_image);
-    BitMap bmap(image_file);
+    std::ifstream readable_file(file_name_image, std::ios::binary | std::ios::ate);
+    std::ofstream writable_file(file_name_image, std::ios::in | std::ios::out);
+    BitMap bmap(readable_file);
+    boot_record b_record;
+    std::string file_name_to_write = argv[2];
 
-    size_t first_block = bmap.getFirstBlock(4);
-    std::cout << "first free block to contiguous available space = " << first_block << std::endl;
-    bmap.setBit(77, 0);
-    first_block = bmap.getFirstBlock(4);
-    std::cout << "first free block to contiguous available space after change = " << first_block << std::endl;
+    b_record = readBootRecord(readable_file);
 
-    //std::ifstream file_to_write(argv[2]);
+    writeToCAB(readable_file, writable_file, b_record, file_name_to_write);
+
+    readable_file.close();
+    writable_file.close();
 
     return 0;
 }

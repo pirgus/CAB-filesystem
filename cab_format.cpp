@@ -179,7 +179,7 @@ void writeBitMap(std::ifstream& readable_file, std::ofstream& writable_file, con
 void writeRootDir(std::ifstream& readable_file, std::ofstream& writable_file, const boot_record& b_record){
             // written in portuguese just out of a habit
 
-    //. and .. directories   
+    //. and .. directories 2147483647  
     dir_entry ponto, pontoponto;
     ponto.first_block = (1 + b_record.bitmap_size_in_blocks);
     ponto.file_size_in_bytes = 0;
@@ -191,14 +191,9 @@ void writeRootDir(std::ifstream& readable_file, std::ofstream& writable_file, co
     pontoponto.file_type = DIRECTORY_TYPE;
     strcpy(pontoponto.file_name, "pontoponto");
     
-
-    //setting the corresponding bits in the bitmap
     BitMap aux_bitmap(readable_file); 
-    //std::cout << "chegou aqui1\n";
-    //std::cout << "first bit = " << 1 + b_record.bitmap_size_in_blocks << std::endl;
-    //std::cout << "last bit = " << DIR_SIZE_IN_BLOCKS << std::endl;
     aux_bitmap.writeBits(1 + b_record.bitmap_size_in_blocks, DIR_SIZE_IN_BLOCKS, 1);
-    //std::cout << "chegou aqui2\n";
+
     //writing...
     writable_file.seekp((1 + b_record.bitmap_size_in_blocks) * b_record.sectors_per_block * b_record.bytes_per_sector);
 
@@ -208,15 +203,12 @@ void writeRootDir(std::ifstream& readable_file, std::ofstream& writable_file, co
         writable_file.write(zero_vector_block, b_record.sectors_per_block * b_record.bytes_per_sector);
     }
     
-    writable_file.write(0, getDiskSize(readable_file) - ((1 + b_record.bitmap_size_in_blocks) * b_record.sectors_per_block * b_record.bytes_per_sector));
     writable_file.seekp((1 + b_record.bitmap_size_in_blocks) * b_record.sectors_per_block * b_record.bytes_per_sector);
     writable_file.write((const char*)&ponto, ENTRY_SIZE);
     writable_file.write((const char*)&pontoponto, ENTRY_SIZE);
 
     writable_file.seekp(b_record.bytes_per_sector * b_record.sectors_per_block);
     writable_file.write((const char*)&*aux_bitmap.getBuffer().begin(), b_record.bitmap_size_in_blocks * b_record.sectors_per_block * b_record.bytes_per_sector);
-
-    
 }
 
 int main(int argc, const char** argv){
